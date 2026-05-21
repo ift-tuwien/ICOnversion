@@ -26,6 +26,9 @@ keywords = [
 ]
 name = "iconversion"
 readme = "readme.md"
+dependencies = [
+    "pint>=0.25.3",
+]
 requires-python = ">=3.12,<4"
 version = "0.0.1"
 
@@ -34,6 +37,7 @@ dev = [
     "Flake8-pyproject>=1.2.3",
     "mypy>=1.20.2",
     "prysk[pytest-plugin]>=0.15.1",
+    "ptpython>=3.0.32",
     "pylint>=3.3.1",
     "pytest>=9",
     "pytest-sugar>=1.1.1",

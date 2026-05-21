@@ -2,6 +2,8 @@
 
 # -- Imports ------------------------------------------------------------------
 
+from pint import Quantity
+
 from iconversion.utility import ADC_MAX_VALUE
 
 # -- Classes ------------------------------------------------------------------
@@ -29,12 +31,13 @@ class Sensor:
     """
 
     def __init__(
-        self, offset: float, coefficients: dict[float, float]
+        self, offset: float, coefficients: dict[float, float], unit: Quantity
     ) -> None:
         self.offset = offset
         self.coefficients = coefficients
+        self.unit = unit
 
-    def convert(self, raw: int) -> float:
+    def convert(self, raw: int, unit=False) -> float | Quantity:
         """Convert 16 bit value to physical value
 
         Args:
@@ -42,6 +45,12 @@ class Sensor:
             raw:
 
                 A 16 bit raw ADC value
+
+            unit:
+
+                If ``True`` then the physical value will be returned including
+                its unit, otherwise the function will just return the
+                magnitude of the physical value in float format
 
         Returns:
 
@@ -52,15 +61,23 @@ class Sensor:
             Import required libraries
 
             >>> from math import isclose
+            >>> from iconversion import g0
 
-            Create a ±100g sensor and check some expected value
+            Create a ±100g sensor
 
-            >>> sensor_100g = Sensor(offset=-1 / 2, coefficients={1: 200})
+            >>> sensor_100g = Sensor(offset=-1 / 2, coefficients={1: 200},
+            ...                      unit=g0)
+
+            Convert the value including unit information
 
             >>> mean_16_bit = ADC_MAX_VALUE/2
-            >>> mean_100g = sensor_100g.convert(mean_16_bit)
-            >>> isclose(mean_100g, 0)
+            >>> mean_100g = sensor_100g.convert(mean_16_bit, True)
+            >>> isclose(mean_100g.magnitude, 0)
             True
+            >>> f"{mean_100g:~P}" # Short pretty printed version
+            '0.0 g_0'
+
+            Check expected conversion values
 
             >>> min_16_bit = 0
             >>> min_100g = sensor_100g.convert(min_16_bit)
@@ -80,7 +97,7 @@ class Sensor:
         for order, coefficient in self.coefficients.items():
             value += factor * coefficient**order
 
-        return value
+        return value * self.unit if unit else value
 
 
 # pylint: enable=too-few-public-methods
