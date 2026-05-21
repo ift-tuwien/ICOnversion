@@ -10,3 +10,4 @@ from pint import UnitRegistry
 
 ureg: UnitRegistry = UnitRegistry()
 g0 = ureg.g0
+degree_Celsius = ureg.degree_Celsius

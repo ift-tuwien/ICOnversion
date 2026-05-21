@@ -21,9 +21,6 @@ class SensorRange(NamedTuple):
     """Maximum physical value of a sensor"""
 
 
-# pylint: disable=too-few-public-methods
-
-
 class Sensor:
     """Base class for a general sensor
 
@@ -72,7 +69,7 @@ class Sensor:
         unit: Quantity,
     ) -> None:
         self.offset = offset
-        self.coefficients = coefficients
+        self.coefficients = sorted(coefficients.items())
         self.range = sensor_range
         self.unit = unit
 
@@ -129,10 +126,73 @@ class Sensor:
         factor = raw / ADC_MAX_VALUE + self.offset
 
         value = 0
-        for order, coefficient in self.coefficients.items():
+        for order, coefficient in self.coefficients:
             value += factor * coefficient**order
 
         return value
 
+    def __repr__(self):
+        """Get the string representation of the sensor
 
-# pylint: enable=too-few-public-methods
+        Returns:
+
+            A text representing this sensor
+
+        Examples:
+
+            Import required libraries
+
+            >>> from iconversion import degree_Celsius, g0
+
+            Print representation of a temperature sensor
+
+            >>> Sensor(
+            ...     offset=0,
+            ...     coefficients={0: 2, 1: 10, 2: 4, 5: 6},
+            ...     sensor_range=SensorRange(min=0, max=100),
+            ...     unit=degree_Celsius)
+            0 °C – 100 °C (2 + 10·x + 4·x² + 6·x⁵)
+
+            Print representation of a ±100g acceleration sensor
+
+            >>> Sensor(offset=-1 / 2,
+            ...     coefficients={1: 200},
+            ...     sensor_range=SensorRange(min=-100, max=100),
+            ...     unit=g0)
+            -100 g_0 – 100 g_0 (200·x)
+
+        """
+
+        def number_to_power(number: int) -> str:
+            digit_to_power = dict(enumerate("⁰¹²³⁴⁵⁶⁷⁸⁹"))
+            representation = ""
+            remainder = number
+            if remainder == 0:
+                return digit_to_power[0]
+            while remainder > 0:
+                last_digit = remainder % 10
+                remainder = remainder // 10
+                representation = digit_to_power[last_digit] + representation
+
+            return representation
+
+        def repr_x(order: int) -> str:
+            if order <= 0:
+                return ""
+            if order <= 1:
+                return "·x"
+            return f"·x{number_to_power(order)}"
+
+        coefficient_representation = " + ".join(
+            f"{coefficient}{repr_x(order)}"
+            for order, coefficient in self.coefficients
+        )
+
+        sensor_range = self.range
+        unit = self.unit
+        representation = (
+            f"{sensor_range.min} {unit:~P} – {sensor_range.max} {unit:~P} "
+            f"({coefficient_representation})"
+        )
+
+        return representation
