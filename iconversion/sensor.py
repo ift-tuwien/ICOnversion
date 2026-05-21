@@ -2,11 +2,23 @@
 
 # -- Imports ------------------------------------------------------------------
 
+from typing import NamedTuple
+
 from pint import Quantity
 
 from iconversion.utility import ADC_MAX_VALUE
 
 # -- Classes ------------------------------------------------------------------
+
+
+class SensorRange(NamedTuple):
+    """Physical range of sensor values"""
+
+    min: float
+    """Minimum physical value of a sensor"""
+
+    max: float
+    """Maximum physical value of a sensor"""
 
 
 # pylint: disable=too-few-public-methods
@@ -28,17 +40,40 @@ class Sensor:
            the form {0: a₀, 1: a₁, 2: a₂, …}, e.g {1: 200} for a linear sensor
            with the polynom 200·x¹ + 0·x⁰ = 200·x
 
+        sensor_range:
+
+            The minimum and maximum physical values of the sensor
+
         unit:
 
             The physical unit of the sensor output
 
+    Examples:
+
+        Import required libraries
+
+        >>> from math import isclose
+        >>> from iconversion import g0
+
+        Create a ±100g sensor
+
+        >>> sensor_100g = Sensor(offset=-1 / 2,
+        ...                      coefficients={1: 200},
+        ...                      sensor_range=SensorRange(min=-100, max=100),
+        ...                      unit=g0)
+
     """
 
     def __init__(
-        self, offset: float, coefficients: dict[float, float], unit: Quantity
+        self,
+        offset: float,
+        coefficients: dict[float, float],
+        sensor_range: SensorRange,
+        unit: Quantity,
     ) -> None:
         self.offset = offset
         self.coefficients = coefficients
+        self.range = sensor_range
         self.unit = unit
 
     def convert(self, raw: int) -> float:
@@ -63,8 +98,10 @@ class Sensor:
 
             Create a ±100g sensor
 
-            >>> sensor_100g = Sensor(offset=-1 / 2, coefficients={1: 200},
-            ...                      unit=g0)
+            >>> sensor_100g = Sensor(offset=-1 / 2,
+            ...     coefficients={1: 200},
+            ...     sensor_range=SensorRange(min=-100, max=100),
+            ...     unit=g0)
 
             Convert the value and add unit information
 
