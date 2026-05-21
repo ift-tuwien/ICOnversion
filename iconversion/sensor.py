@@ -37,7 +37,7 @@ class Sensor:
         self.coefficients = coefficients
         self.unit = unit
 
-    def convert(self, raw: int, unit=False) -> float | Quantity:
+    def convert(self, raw: int) -> float:
         """Convert 16 bit value to physical value
 
         Args:
@@ -45,12 +45,6 @@ class Sensor:
             raw:
 
                 A 16 bit raw ADC value
-
-            unit:
-
-                If ``True`` then the physical value will be returned including
-                its unit, otherwise the function will just return the
-                magnitude of the physical value in float format
 
         Returns:
 
@@ -68,10 +62,10 @@ class Sensor:
             >>> sensor_100g = Sensor(offset=-1 / 2, coefficients={1: 200},
             ...                      unit=g0)
 
-            Convert the value including unit information
+            Convert the value and add unit information
 
             >>> mean_16_bit = ADC_MAX_VALUE/2
-            >>> mean_100g = sensor_100g.convert(mean_16_bit, True)
+            >>> mean_100g = sensor_100g.convert(mean_16_bit) * sensor_100g.unit
             >>> isclose(mean_100g.magnitude, 0)
             True
             >>> f"{mean_100g:~P}" # Short pretty printed version
@@ -97,7 +91,7 @@ class Sensor:
         for order, coefficient in self.coefficients.items():
             value += factor * coefficient**order
 
-        return value * self.unit if unit else value
+        return value
 
 
 # pylint: enable=too-few-public-methods
