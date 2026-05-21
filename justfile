@@ -17,8 +17,13 @@ setup:
 
 # Check code with various linters
 [group('lint')]
-[default]
 check: setup
 	uv run mypy "{{package}}"
 	uv run flake8
 	uv run pylint .
+
+# Test code
+[group('test')]
+[default]
+test: check
+	uv run pytest
