@@ -28,6 +28,10 @@ class Sensor:
            the form {0: a₀, 1: a₁, 2: a₂, …}, e.g {1: 200} for a linear sensor
            with the polynom 200·x¹ + 0·x⁰ = 200·x
 
+        unit:
+
+            The physical unit of the sensor output
+
     """
 
     def __init__(
