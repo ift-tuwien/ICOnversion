@@ -127,7 +127,7 @@ class Sensor:
 
         value = 0
         for order, coefficient in self.coefficients:
-            value += factor * coefficient**order
+            value += coefficient * factor**order
 
         return value
 
