@@ -35,7 +35,7 @@ class Sensor:
         coefficients:
 
            Polynomial coefficients for the sensor; The values are stored in
-           the form [a₀, a₁, a₂, …}, e.g [0, 200] for a linear sensor
+           the form [a₀, a₁, a₂, …], e.g [0, 200] for a linear sensor
            with the polynom 0·x⁰ + 200·x¹ = 200·x
 
         sensor_range:
