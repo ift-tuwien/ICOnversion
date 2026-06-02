@@ -4,6 +4,7 @@
 
 from typing import NamedTuple
 
+from numpy.polynomial import Polynomial
 from pint import Quantity
 
 from iconversion.utility import ADC_MAX_VALUE
@@ -64,12 +65,16 @@ class Sensor:
     def __init__(
         self,
         offset: float,
-        coefficients: dict[float, float],
+        coefficients: dict[int, float],
         sensor_range: SensorRange,
         unit: Quantity,
     ) -> None:
         self.offset = offset
-        self.coefficients = sorted(coefficients.items())
+        highest_power = max(coefficients.keys())
+        self.polynomial = Polynomial([
+            coefficients.get(coefficient, 0)
+            for coefficient in range(0, highest_power + 1)
+        ])
         self.range = sensor_range
         self.unit = unit
 
@@ -125,11 +130,7 @@ class Sensor:
 
         factor = raw / ADC_MAX_VALUE + self.offset
 
-        value = 0
-        for order, coefficient in self.coefficients:
-            value += coefficient * factor**order
-
-        return value
+        return self.polynomial(factor)
 
     def __repr__(self):
         """Get the string representation of the sensor
@@ -151,7 +152,7 @@ class Sensor:
             ...     coefficients={0: 2, 1: 10, 2: 4, 5: 6},
             ...     sensor_range=SensorRange(min=0, max=100),
             ...     unit=degree_Celsius)
-            0 °C – 100 °C (2 + 10·x + 4·x² + 6·x⁵)
+            0 °C – 100 °C (2.0 + 10.0·x + 4.0·x² + 0.0·x³ + 0.0·x⁴ + 6.0·x⁵)
 
             Print representation of a ±100g acceleration sensor
 
@@ -159,40 +160,16 @@ class Sensor:
             ...     coefficients={1: 200},
             ...     sensor_range=SensorRange(min=-100, max=100),
             ...     unit=g0)
-            -100 g_0 – 100 g_0 (200·x)
+            -100 g_0 – 100 g_0 (0.0 + 200.0·x)
 
         """
 
-        def number_to_power(number: int) -> str:
-            digit_to_power = dict(enumerate("⁰¹²³⁴⁵⁶⁷⁸⁹"))
-            representation = ""
-            remainder = number
-            if remainder == 0:
-                return digit_to_power[0]
-            while remainder > 0:
-                last_digit = remainder % 10
-                remainder = remainder // 10
-                representation = digit_to_power[last_digit] + representation
-
-            return representation
-
-        def repr_x(order: int) -> str:
-            if order <= 0:
-                return ""
-            if order <= 1:
-                return "·x"
-            return f"·x{number_to_power(order)}"
-
-        coefficient_representation = " + ".join(
-            f"{coefficient}{repr_x(order)}"
-            for order, coefficient in self.coefficients
-        )
-
+        polynomial = self.polynomial
         sensor_range = self.range
         unit = self.unit
         representation = (
             f"{sensor_range.min} {unit:~P} – {sensor_range.max} {unit:~P} "
-            f"({coefficient_representation})"
+            f"({polynomial:unicode})"
         )
 
         return representation
