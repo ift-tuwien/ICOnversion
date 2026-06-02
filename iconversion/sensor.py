@@ -35,8 +35,8 @@ class Sensor:
         coefficients:
 
            Polynomial coefficients for the sensor; The values are stored in
-           the form {0: a₀, 1: a₁, 2: a₂, …}, e.g {1: 200} for a linear sensor
-           with the polynom 200·x¹ + 0·x⁰ = 200·x
+           the form [a₀, a₁, a₂, …}, e.g [0, 200] for a linear sensor
+           with the polynom 0·x⁰ + 200·x¹ = 200·x
 
         sensor_range:
 
@@ -56,7 +56,7 @@ class Sensor:
         Create a ±100g sensor
 
         >>> sensor_100g = Sensor(offset=-1 / 2,
-        ...                      coefficients={1: 200},
+        ...                      coefficients=[0, 200],
         ...                      sensor_range=SensorRange(min=-100, max=100),
         ...                      unit=g0)
 
@@ -65,16 +65,12 @@ class Sensor:
     def __init__(
         self,
         offset: float,
-        coefficients: dict[int, float],
+        coefficients: list[float],
         sensor_range: SensorRange,
         unit: Quantity,
     ) -> None:
         self.offset = offset
-        highest_power = max(coefficients.keys())
-        self.polynomial = Polynomial([
-            coefficients.get(coefficient, 0)
-            for coefficient in range(0, highest_power + 1)
-        ])
+        self.polynomial = Polynomial(coefficients)
         self.range = sensor_range
         self.unit = unit
 
@@ -101,7 +97,7 @@ class Sensor:
             Create a ±100g sensor
 
             >>> sensor_100g = Sensor(offset=-1 / 2,
-            ...     coefficients={1: 200},
+            ...     coefficients=[0, 200],
             ...     sensor_range=SensorRange(min=-100, max=100),
             ...     unit=g0)
 
@@ -149,7 +145,7 @@ class Sensor:
 
             >>> Sensor(
             ...     offset=0,
-            ...     coefficients={0: 2, 1: 10, 2: 4, 5: 6},
+            ...     coefficients=[2, 10, 4, 0, 0, 6],
             ...     sensor_range=SensorRange(min=0, max=100),
             ...     unit=degree_Celsius)
             0 °C – 100 °C (2.0 + 10.0·x + 4.0·x² + 0.0·x³ + 0.0·x⁴ + 6.0·x⁵)
@@ -157,7 +153,7 @@ class Sensor:
             Print representation of a ±100g acceleration sensor
 
             >>> Sensor(offset=-1 / 2,
-            ...     coefficients={1: 200},
+            ...     coefficients=[0, 200],
             ...     sensor_range=SensorRange(min=-100, max=100),
             ...     unit=g0)
             -100 g_0 – 100 g_0 (0.0 + 200.0·x)
