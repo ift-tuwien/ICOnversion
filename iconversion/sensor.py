@@ -24,7 +24,7 @@ def read_sensor_data():
 
         >>> sensors = read_sensor_data()
         >>> sensors["acc100g_01"]
-        -100.0 g – 100.0 g (0.0 + 200.0·x)
+        Acceleration 100g -100.0 g – 100.0 g (0.0 + 200.0·x)
 
     """
 
@@ -32,18 +32,36 @@ def read_sensor_data():
     sensors = {}
     for sensor in yaml.load(Path(__file__).parent / "sensors.yaml")["sensors"]:
         sensor_id = sensor["id"]
+        identification = SensorIdentification(
+            id=sensor_id, name=sensor["name"], type=sensor["type"]
+        )
         offset = sensor["offset"]
         coefficients = sensor["coefficients"]
         sensor_range = SensorRange(
             min=sensor["phys_min"], max=sensor["phys_max"]
         )
         unit = ureg.parse_units(sensor["unit"])
-        sensors[sensor_id] = Sensor(offset, coefficients, sensor_range, unit)
+        sensors[sensor_id] = Sensor(
+            identification, offset, coefficients, sensor_range, unit
+        )
 
     return sensors
 
 
 # -- Classes ------------------------------------------------------------------
+
+
+class SensorIdentification(NamedTuple):
+    """Textual data about a specific sensor"""
+
+    id: str
+    """Unique text that identifies this sensor"""
+
+    name: str
+    """Human readable name for sensor"""
+
+    type: str
+    """Type of sensor e.g. “ADXL1001”"""
 
 
 class SensorRange(NamedTuple):
@@ -60,6 +78,10 @@ class Sensor:
     """Base class for a general sensor
 
     Args:
+
+        identification:
+
+            Textual data about the specific sensor
 
         offset:
 
@@ -89,24 +111,38 @@ class Sensor:
 
         Create a ±100g sensor
 
-        >>> sensor_100g = Sensor(offset=-1 / 2,
-        ...                      coefficients=[0, 200],
-        ...                      sensor_range=SensorRange(min=-100, max=100),
-        ...                      unit=g0)
+        >>> identification = SensorIdentification(
+        ...     id="acc100g_01",
+        ...     name="Acceleration 100g",
+        ...     type="ADXL1001",
+        ... )
+        >>> sensor_100g = Sensor(
+        ...     identification=identification,
+        ...     offset=-1 / 2,
+        ...     coefficients=[0, 200],
+        ...     sensor_range=SensorRange(min=-100, max=100),
+        ...     unit=g0,
+        ... )
 
     """
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+
     def __init__(
         self,
+        identification: SensorIdentification,
         offset: float,
         coefficients: list[float],
         sensor_range: SensorRange,
         unit: Quantity,
     ) -> None:
+        self.identification = identification
         self.offset = offset
         self.polynomial = Polynomial(coefficients)
         self.range = sensor_range
         self.unit = unit
+
+    # pylint: enable=too-many-arguments, too-many-positional-arguments
 
     def convert(self, raw: int) -> float:
         """Convert 16 bit value to physical value
@@ -130,10 +166,18 @@ class Sensor:
 
             Create a ±100g sensor
 
-            >>> sensor_100g = Sensor(offset=-1 / 2,
+            >>> identification = SensorIdentification(
+            ...     id="acc100g_01",
+            ...     name="Acceleration 100g",
+            ...     type="ADXL1001"
+            ... )
+            >>> sensor_100g = Sensor(
+            ...     identification=identification,
+            ...     offset=-1 / 2,
             ...     coefficients=[0, 200],
             ...     sensor_range=SensorRange(min=-100, max=100),
-            ...     unit=g0)
+            ...     unit=g0,
+            ... )
 
             Convert the value and add unit information
 
@@ -177,29 +221,46 @@ class Sensor:
 
             Print representation of a temperature sensor
 
+            >>> identification = SensorIdentification(
+            ...     id="temp_01",
+            ...     name="Temperature",
+            ...     type="ADXL358C",
+            ... )
             >>> Sensor(
+            ...     identification=identification,
             ...     offset=0,
             ...     coefficients=[2, 10, 4, 0, 0, 6],
             ...     sensor_range=SensorRange(min=0, max=100),
-            ...     unit=degree_Celsius)
-            0 °C – 100 °C (2.0 + 10.0·x + 4.0·x² + 0.0·x³ + 0.0·x⁴ + 6.0·x⁵)
+            ...     unit=degree_Celsius,
+            ... ) # doctest:+NORMALIZE_WHITESPACE
+            Temperature 0 °C – 100 °C
+            (2.0 + 10.0·x + 4.0·x² + 0.0·x³ + 0.0·x⁴ + 6.0·x⁵)
 
             Print representation of a ±100g acceleration sensor
 
-            >>> Sensor(offset=-1 / 2,
+            >>> identification = SensorIdentification(
+            ...     id="acc100g_01",
+            ...     name="Acceleration 100g",
+            ...     type="ADXL1001",
+            ... )
+            >>> Sensor(
+            ...     identification=identification,
+            ...     offset=-1 / 2,
             ...     coefficients=[0, 200],
             ...     sensor_range=SensorRange(min=-100, max=100),
-            ...     unit=g0)
-            -100 g_0 – 100 g_0 (0.0 + 200.0·x)
+            ...     unit=g0
+            ... )
+            Acceleration 100g -100 g_0 – 100 g_0 (0.0 + 200.0·x)
 
         """
 
         polynomial = self.polynomial
         sensor_range = self.range
         unit = self.unit
+        name = self.identification.name
         representation = (
-            f"{sensor_range.min} {unit:~P} – {sensor_range.max} {unit:~P} "
-            f"({polynomial:unicode})"
+            f"{name} {sensor_range.min} {unit:~P} – {sensor_range.max} "
+            f"{unit:~P} ({polynomial:unicode})"
         )
 
         return representation
