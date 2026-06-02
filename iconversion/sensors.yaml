@@ -1,0 +1,12 @@
+sensors:
+  - offset: -100
+    coefficients:
+      - 0
+      - 200
+    phys_max: 100.0
+    phys_min: -100.0
+    unit: g
+
+    name: Acceleration 100g
+    id: acc100g_01
+    type: ADXL1001

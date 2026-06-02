@@ -2,12 +2,46 @@
 
 # -- Imports ------------------------------------------------------------------
 
+from pathlib import Path
 from typing import NamedTuple
 
 from numpy.polynomial import Polynomial
 from pint import Quantity
+from ruamel.yaml import YAML
 
+from iconversion import ureg
 from iconversion.utility import ADC_MAX_VALUE
+
+# -- Functions ----------------------------------------------------------------
+
+
+def read_sensor_data():
+    """Read sensor data from config file
+
+    Examples:
+
+        Read sensor data
+
+        >>> sensors = read_sensor_data()
+        >>> sensors["acc100g_01"]
+        -100.0 g – 100.0 g (0.0 + 200.0·x)
+
+    """
+
+    yaml = YAML(typ="safe")
+    sensors = {}
+    for sensor in yaml.load(Path(__file__).parent / "sensors.yaml")["sensors"]:
+        sensor_id = sensor["id"]
+        offset = sensor["offset"]
+        coefficients = sensor["coefficients"]
+        sensor_range = SensorRange(
+            min=sensor["phys_min"], max=sensor["phys_max"]
+        )
+        unit = ureg.parse_units(sensor["unit"])
+        sensors[sensor_id] = Sensor(offset, coefficients, sensor_range, unit)
+
+    return sensors
+
 
 # -- Classes ------------------------------------------------------------------
 
