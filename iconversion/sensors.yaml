@@ -11,7 +11,7 @@ sensors:
     physical:
       max: 100
       min: -100
-      unit: g
+      unit: g_0
 
   - description:
       name: Temperature
