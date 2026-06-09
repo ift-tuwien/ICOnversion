@@ -24,26 +24,36 @@ def read_sensor_data():
 
         >>> sensors = read_sensor_data()
         >>> sensors["acc100g_01"]
-        Acceleration 100g -100.0 g – 100.0 g (0.0 + 200.0·x)
+        Acceleration 100g -100.0 g – 100.0 g (-125.0 + 75.75757576·x)
 
     """
 
     yaml = YAML(typ="safe")
     sensors = {}
     for sensor in yaml.load(Path(__file__).parent / "sensors.yaml")["sensors"]:
-        sensor_id = sensor["id"]
+
+        config_description = sensor["description"]
+        sensor_id = config_description["id"]
         identification = SensorIdentification(
-            id=sensor_id, name=sensor["name"], type=sensor["type"]
+            id=sensor_id,
+            name=config_description["name"],
+            type=config_description["type"],
         )
-        offset = sensor["offset"]
-        coefficients = sensor["coefficients"]
+
+        config_conversion = sensor["conversion"]
+        conversion = SensorConversion(
+            coefficients=config_conversion["coefficients"],
+            reference_voltage=config_conversion["reference voltage"],
+        )
+
+        config_range = sensor["physical"]
         sensor_range = SensorRange(
-            min=sensor["phys_min"], max=sensor["phys_max"]
+            min=config_range["min"],
+            max=config_range["max"],
+            unit=ureg.parse_units(config_range["unit"]),
         )
-        unit = ureg.parse_units(sensor["unit"])
-        sensors[sensor_id] = Sensor(
-            identification, offset, coefficients, sensor_range, unit
-        )
+
+        sensors[sensor_id] = Sensor(identification, conversion, sensor_range)
 
     return sensors
 
@@ -64,6 +74,19 @@ class SensorIdentification(NamedTuple):
     """Type of sensor e.g. “ADXL1001”"""
 
 
+class SensorConversion(NamedTuple):
+    """Values required for converting ADC value to physical value"""
+
+    coefficients: list[float]
+    """Polynomial coefficients for the sensor; The values are stored in
+       the form [a₀, a₁, a₂, …], e.g [0, 200] for a linear sensor
+       with the polynom 0·x⁰ + 200·x¹ = 200·x, where x is the ADC voltage in
+       millivolt"""
+
+    reference_voltage: int = 33_000
+    """The reference voltage used for sampling in millivolt"""
+
+
 class SensorRange(NamedTuple):
     """Physical range of sensor values"""
 
@@ -72,6 +95,9 @@ class SensorRange(NamedTuple):
 
     max: float
     """Maximum physical value of a sensor"""
+
+    unit: Quantity
+    """The physical unit of the min and max value"""
 
 
 class Sensor:
@@ -83,24 +109,13 @@ class Sensor:
 
             Textual data about the specific sensor
 
-        offset:
+        conversion:
 
-            Offset from 0 for the given sensor, e.g. -1/2 for a sensor with
-            symmetric value range from -max to max
-
-        coefficients:
-
-           Polynomial coefficients for the sensor; The values are stored in
-           the form [a₀, a₁, a₂, …], e.g [0, 200] for a linear sensor
-           with the polynom 0·x⁰ + 200·x¹ = 200·x
+            Constants required for converting the raw value into a voltage
 
         sensor_range:
 
             The minimum and maximum physical values of the sensor
-
-        unit:
-
-            The physical unit of the sensor output
 
     Examples:
 
@@ -111,38 +126,43 @@ class Sensor:
 
         Create a ±100g sensor
 
+        >>> reference_voltage=33_000
         >>> identification = SensorIdentification(
         ...     id="acc100g_01",
         ...     name="Acceleration 100g",
         ...     type="ADXL1001",
         ... )
+        >>> conversion = SensorConversion(
+        ...     coefficients=[
+        ...         -125,
+        ...         250/reference_voltage,
+        ...     ],
+        ...     reference_voltage=reference_voltage,
+        ... )
+        >>> sensor_range = SensorRange(
+        ...     min=-125,
+        ...     max=125,
+        ...     unit=g0,
+        ... )
         >>> sensor_100g = Sensor(
         ...     identification=identification,
-        ...     offset=-1 / 2,
-        ...     coefficients=[0, 200],
-        ...     sensor_range=SensorRange(min=-100, max=100),
-        ...     unit=g0,
+        ...     conversion=conversion,
+        ...     sensor_range=sensor_range,
         ... )
 
     """
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
-
     def __init__(
         self,
         identification: SensorIdentification,
-        offset: float,
-        coefficients: list[float],
+        conversion: SensorConversion,
         sensor_range: SensorRange,
-        unit: Quantity,
     ) -> None:
         self.identification = identification
-        self.offset = offset
-        self.polynomial = Polynomial(coefficients)
+        self.conversion = conversion
+        self.polynomial = Polynomial(conversion.coefficients)
         self.range = sensor_range
-        self.unit = unit
-
-    # pylint: enable=too-many-arguments, too-many-positional-arguments
+        self.unit = sensor_range.unit
 
     def convert(self, raw: int) -> float:
         """Convert 16 bit value to physical value
@@ -166,17 +186,28 @@ class Sensor:
 
             Create a ±100g sensor
 
+            >>> reference_voltage = 33_000
             >>> identification = SensorIdentification(
             ...     id="acc100g_01",
             ...     name="Acceleration 100g",
-            ...     type="ADXL1001"
+            ...     type="ADXL1001",
+            ... )
+            >>> conversion = SensorConversion(
+            ...     coefficients=[
+            ...         -125,
+            ...         250/reference_voltage,
+            ...     ],
+            ...     reference_voltage=reference_voltage,
+            ... )
+            >>> sensor_range = SensorRange(
+            ...     min=-125,
+            ...     max=125,
+            ...     unit=g0,
             ... )
             >>> sensor_100g = Sensor(
             ...     identification=identification,
-            ...     offset=-1 / 2,
-            ...     coefficients=[0, 200],
-            ...     sensor_range=SensorRange(min=-100, max=100),
-            ...     unit=g0,
+            ...     conversion=conversion,
+            ...     sensor_range=sensor_range,
             ... )
 
             Convert the value and add unit information
@@ -192,19 +223,23 @@ class Sensor:
 
             >>> min_16_bit = 0
             >>> min_100g = sensor_100g.convert(min_16_bit)
-            >>> isclose(min_100g, -100)
+            >>> isclose(min_100g, -125)
             True
 
             >>> max_16_bit = ADC_MAX_VALUE
             >>> max_100g = sensor_100g.convert(max_16_bit)
-            >>> isclose(max_100g, 100)
+            >>> isclose(max_100g, 125)
             True
 
         """
 
-        factor = raw / ADC_MAX_VALUE + self.offset
+        conversion = self.conversion
+        voltage_millivolt = (
+            raw / ADC_MAX_VALUE
+        ) * conversion.reference_voltage
+        physical_value = self.polynomial(voltage_millivolt)
 
-        return self.polynomial(factor)
+        return physical_value
 
     def __repr__(self):
         """Get the string representation of the sensor
@@ -221,42 +256,64 @@ class Sensor:
 
             Print representation of a temperature sensor
 
+            >>> reference_voltage = 33_000
             >>> identification = SensorIdentification(
             ...     id="temp_01",
             ...     name="Temperature",
             ...     type="ADXL358C",
             ... )
+            >>> conversion = SensorConversion(
+            ...     coefficients=[
+            ...         0.967/0.003 - 25, # 297.333
+            ...         25/0.003,         # 8333.33
+            ...     ],
+            ...     reference_voltage=reference_voltage,
+            ... )
+            >>> sensor_range = SensorRange(
+            ...     min=-40,
+            ...     max=125,
+            ...     unit=degree_Celsius,
+            ... )
+
             >>> Sensor(
             ...     identification=identification,
-            ...     offset=0,
-            ...     coefficients=[2, 10, 4, 0, 0, 6],
-            ...     sensor_range=SensorRange(min=0, max=100),
-            ...     unit=degree_Celsius,
-            ... ) # doctest:+NORMALIZE_WHITESPACE
-            Temperature 0 °C – 100 °C
-            (2.0 + 10.0·x + 4.0·x² + 0.0·x³ + 0.0·x⁴ + 6.0·x⁵)
+            ...     conversion=conversion,
+            ...     sensor_range=sensor_range,
+            ... )
+            Temperature -40 °C – 125 °C (297.33333333 + 8333.33333333·x)
 
             Print representation of a ±100g acceleration sensor
 
+            >>> reference_voltage = 33_000
             >>> identification = SensorIdentification(
             ...     id="acc100g_01",
             ...     name="Acceleration 100g",
             ...     type="ADXL1001",
             ... )
+            >>> conversion = SensorConversion(
+            ...     coefficients=[
+            ...         -125,
+            ...         250/reference_voltage,
+            ...     ],
+            ...     reference_voltage=reference_voltage,
+            ... )
+            >>> sensor_range = SensorRange(
+            ...     min=-125,
+            ...     max=125,
+            ...     unit=g0,
+            ... )
             >>> Sensor(
             ...     identification=identification,
-            ...     offset=-1 / 2,
-            ...     coefficients=[0, 200],
-            ...     sensor_range=SensorRange(min=-100, max=100),
-            ...     unit=g0
+            ...     conversion=conversion,
+            ...     sensor_range=sensor_range,
             ... )
-            Acceleration 100g -100 g_0 – 100 g_0 (0.0 + 200.0·x)
+            Acceleration 100g -125 g_0 – 125 g_0 (-125.0 + 0.00757576·x)
 
         """
 
         polynomial = self.polynomial
         sensor_range = self.range
-        unit = self.unit
+        unit = self.range.unit
         name = self.identification.name
         representation = (
             f"{name} {sensor_range.min} {unit:~P} – {sensor_range.max} "
