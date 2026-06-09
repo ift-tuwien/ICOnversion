@@ -24,7 +24,7 @@ def read_sensor_data():
 
         >>> sensors = read_sensor_data()
         >>> sensors["acc100g_01"]
-        Acceleration 100g -100.0 g – 100.0 g (-125.0 + 75.75757576·x)
+        Acceleration 100g -100.0 g – 100.0 g (-125.0 + 250.0·x)
 
     """
 
@@ -40,10 +40,8 @@ def read_sensor_data():
             type=config_description["type"],
         )
 
-        config_conversion = sensor["conversion"]
         conversion = SensorConversion(
-            coefficients=config_conversion["coefficients"],
-            reference_voltage=config_conversion["reference voltage"],
+            coefficients=sensor["conversion"]["coefficients"],
         )
 
         config_range = sensor["physical"]
@@ -80,11 +78,8 @@ class SensorConversion(NamedTuple):
     coefficients: list[float]
     """Polynomial coefficients for the sensor; The values are stored in
        the form [a₀, a₁, a₂, …], e.g [0, 200] for a linear sensor
-       with the polynom 0·x⁰ + 200·x¹ = 200·x, where x is the ADC voltage in
-       millivolt"""
-
-    reference_voltage: int = 33_000
-    """The reference voltage used for sampling in millivolt"""
+       with the polynom 0·x⁰ + 200·x¹ = 200·x, where x is the ADC value
+       normalized to a value between 0 and 1"""
 
 
 class SensorRange(NamedTuple):
@@ -126,7 +121,6 @@ class Sensor:
 
         Create a ±100g sensor
 
-        >>> reference_voltage=33_000
         >>> identification = SensorIdentification(
         ...     id="acc100g_01",
         ...     name="Acceleration 100g",
@@ -135,9 +129,8 @@ class Sensor:
         >>> conversion = SensorConversion(
         ...     coefficients=[
         ...         -125,
-        ...         250/reference_voltage,
-        ...     ],
-        ...     reference_voltage=reference_voltage,
+        ...         250,
+        ...     ]
         ... )
         >>> sensor_range = SensorRange(
         ...     min=-125,
@@ -186,7 +179,6 @@ class Sensor:
 
             Create a ±100g sensor
 
-            >>> reference_voltage = 33_000
             >>> identification = SensorIdentification(
             ...     id="acc100g_01",
             ...     name="Acceleration 100g",
@@ -195,9 +187,8 @@ class Sensor:
             >>> conversion = SensorConversion(
             ...     coefficients=[
             ...         -125,
-            ...         250/reference_voltage,
-            ...     ],
-            ...     reference_voltage=reference_voltage,
+            ...         250,
+            ...     ]
             ... )
             >>> sensor_range = SensorRange(
             ...     min=-125,
@@ -233,11 +224,8 @@ class Sensor:
 
         """
 
-        conversion = self.conversion
-        voltage_millivolt = (
-            raw / ADC_MAX_VALUE
-        ) * conversion.reference_voltage
-        physical_value = self.polynomial(voltage_millivolt)
+        normalized_value = raw / ADC_MAX_VALUE
+        physical_value = self.polynomial(normalized_value)
 
         return physical_value
 
@@ -256,7 +244,6 @@ class Sensor:
 
             Print representation of a temperature sensor
 
-            >>> reference_voltage = 33_000
             >>> identification = SensorIdentification(
             ...     id="temp_01",
             ...     name="Temperature",
@@ -264,10 +251,9 @@ class Sensor:
             ... )
             >>> conversion = SensorConversion(
             ...     coefficients=[
-            ...         0.967/0.003 - 25, # 297.333
-            ...         25/0.003,         # 8333.33
-            ...     ],
-            ...     reference_voltage=reference_voltage,
+            ...         25 - 1100 * 0.976/3.3, # -300.3333333333333
+            ...         330/0.3,               # 1100
+            ...     ]
             ... )
             >>> sensor_range = SensorRange(
             ...     min=-40,
@@ -280,11 +266,10 @@ class Sensor:
             ...     conversion=conversion,
             ...     sensor_range=sensor_range,
             ... )
-            Temperature -40 °C – 125 °C (297.33333333 + 8333.33333333·x)
+            Temperature -40 °C – 125 °C (-300.33333333 + 1100.0·x)
 
             Print representation of a ±100g acceleration sensor
 
-            >>> reference_voltage = 33_000
             >>> identification = SensorIdentification(
             ...     id="acc100g_01",
             ...     name="Acceleration 100g",
@@ -293,9 +278,8 @@ class Sensor:
             >>> conversion = SensorConversion(
             ...     coefficients=[
             ...         -125,
-            ...         250/reference_voltage,
-            ...     ],
-            ...     reference_voltage=reference_voltage,
+            ...         250,
+            ...     ]
             ... )
             >>> sensor_range = SensorRange(
             ...     min=-125,
@@ -307,7 +291,7 @@ class Sensor:
             ...     conversion=conversion,
             ...     sensor_range=sensor_range,
             ... )
-            Acceleration 100g -125 g_0 – 125 g_0 (-125.0 + 0.00757576·x)
+            Acceleration 100g -125 g_0 – 125 g_0 (-125.0 + 250.0·x)
 
         """
 

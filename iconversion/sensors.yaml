@@ -5,13 +5,9 @@ sensors:
       type: ADXL1001
 
     conversion:
-      reference voltage: 33_000
       coefficients:
-        # For reference voltage of of 3.3 V (5V → 20 mV/g; 3.3V → 13.2 mV/g)
-        # voltage(gravity) = 0.0132*gravity + reference_voltage/2
-        # gravity(voltage) = voltage/0.0132 - reference_voltage/(2*0.0132)
-        - -125               # -3.3/(2*0.0132)
-        - 75.75757575757576 # 1/0.0132
+        - -125
+        - 250
 
     physical:
       max: 100.0
