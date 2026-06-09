@@ -40,9 +40,7 @@ def read_sensor_data():
             type=config_description["type"],
         )
 
-        conversion = SensorConversion(
-            coefficients=sensor["conversion"]["coefficients"],
-        )
+        coefficients = sensor["coefficients"]
 
         config_range = sensor["physical"]
         sensor_range = SensorRange(
@@ -51,7 +49,7 @@ def read_sensor_data():
             unit=ureg.parse_units(config_range["unit"]),
         )
 
-        sensors[sensor_id] = Sensor(identification, conversion, sensor_range)
+        sensors[sensor_id] = Sensor(identification, coefficients, sensor_range)
 
     return sensors
 
@@ -70,16 +68,6 @@ class SensorIdentification(NamedTuple):
 
     type: str
     """Type of sensor e.g. “ADXL1001”"""
-
-
-class SensorConversion(NamedTuple):
-    """Values required for converting ADC value to physical value"""
-
-    coefficients: list[float]
-    """Polynomial coefficients for the sensor; The values are stored in
-       the form [a₀, a₁, a₂, …], e.g [0, 200] for a linear sensor
-       with the polynom 0·x⁰ + 200·x¹ = 200·x, where x is the ADC value
-       normalized to a value between 0 and 1"""
 
 
 class SensorRange(NamedTuple):
@@ -104,9 +92,10 @@ class Sensor:
 
             Textual data about the specific sensor
 
-        conversion:
+        coefficients:
 
-            Constants required for converting the raw value into a voltage
+            Polynomial coefficients for mapping from value range 0 to 1 to
+            physical value
 
         sensor_range:
 
@@ -126,12 +115,10 @@ class Sensor:
         ...     name="Acceleration 100g",
         ...     type="ADXL1001",
         ... )
-        >>> conversion = SensorConversion(
-        ...     coefficients=[
-        ...         -125,
-        ...         250,
-        ...     ]
-        ... )
+        >>> coefficients=[
+        ...     -125,
+        ...     250,
+        ... ]
         >>> sensor_range = SensorRange(
         ...     min=-125,
         ...     max=125,
@@ -139,7 +126,7 @@ class Sensor:
         ... )
         >>> sensor_100g = Sensor(
         ...     identification=identification,
-        ...     conversion=conversion,
+        ...     coefficients=coefficients,
         ...     sensor_range=sensor_range,
         ... )
 
@@ -148,12 +135,11 @@ class Sensor:
     def __init__(
         self,
         identification: SensorIdentification,
-        conversion: SensorConversion,
+        coefficients: list[float],
         sensor_range: SensorRange,
     ) -> None:
         self.identification = identification
-        self.conversion = conversion
-        self.polynomial = Polynomial(conversion.coefficients)
+        self.polynomial = Polynomial(coefficients)
         self.range = sensor_range
         self.unit = sensor_range.unit
 
@@ -184,12 +170,10 @@ class Sensor:
             ...     name="Acceleration 100g",
             ...     type="ADXL1001",
             ... )
-            >>> conversion = SensorConversion(
-            ...     coefficients=[
-            ...         -125,
-            ...         250,
-            ...     ]
-            ... )
+            >>> coefficients=[
+            ...     -125,
+            ...     250,
+            ... ]
             >>> sensor_range = SensorRange(
             ...     min=-125,
             ...     max=125,
@@ -197,7 +181,7 @@ class Sensor:
             ... )
             >>> sensor_100g = Sensor(
             ...     identification=identification,
-            ...     conversion=conversion,
+            ...     coefficients=coefficients,
             ...     sensor_range=sensor_range,
             ... )
 
@@ -249,12 +233,10 @@ class Sensor:
             ...     name="Temperature",
             ...     type="ADXL358C",
             ... )
-            >>> conversion = SensorConversion(
-            ...     coefficients=[
-            ...         25 - 1100 * 0.976/3.3, # -300.3333333333333
-            ...         330/0.3,               # 1100
-            ...     ]
-            ... )
+            >>> coefficients=[
+            ...     25 - 1100 * 0.976/3.3, # -300.3333333333333
+            ...     330/0.3,               # 1100
+            ... ]
             >>> sensor_range = SensorRange(
             ...     min=-40,
             ...     max=125,
@@ -263,7 +245,7 @@ class Sensor:
 
             >>> Sensor(
             ...     identification=identification,
-            ...     conversion=conversion,
+            ...     coefficients=coefficients,
             ...     sensor_range=sensor_range,
             ... )
             Temperature -40 °C – 125 °C (-300.33333333 + 1100.0·x)
@@ -275,12 +257,10 @@ class Sensor:
             ...     name="Acceleration 100g",
             ...     type="ADXL1001",
             ... )
-            >>> conversion = SensorConversion(
-            ...     coefficients=[
-            ...         -125,
-            ...         250,
-            ...     ]
-            ... )
+            >>> coefficients=[
+            ...     -125,
+            ...     250,
+            ... ]
             >>> sensor_range = SensorRange(
             ...     min=-125,
             ...     max=125,
@@ -288,7 +268,7 @@ class Sensor:
             ... )
             >>> Sensor(
             ...     identification=identification,
-            ...     conversion=conversion,
+            ...     coefficients=coefficients,
             ...     sensor_range=sensor_range,
             ... )
             Acceleration 100g -125 g_0 – 125 g_0 (-125.0 + 250.0·x)

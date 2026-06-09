@@ -4,10 +4,9 @@ sensors:
       id: acc100g_01
       type: ADXL1001
 
-    conversion:
-      coefficients:
-        - -125
-        - 250
+    coefficients:
+      - -125
+      - 250
 
     physical:
       max: 100.0
