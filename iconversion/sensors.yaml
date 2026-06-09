@@ -12,3 +12,17 @@ sensors:
       max: 100
       min: -100
       unit: g
+
+  - description:
+      name: Temperature
+      id: temp_01
+      type: ADXL358C
+
+    coefficients:
+      - -300.3333333333333
+      - 1100
+
+    physical:
+      max: 125
+      min: -40
+      unit: °C
