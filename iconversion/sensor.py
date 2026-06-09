@@ -24,7 +24,7 @@ def read_sensor_data():
 
         >>> sensors = read_sensor_data()
         >>> sensors["acc100g_01"]
-        Acceleration 100g -100 g – 100 g (-125.0 + 250.0·x)
+        Acceleration 100g [-100 g_0, 100 g_0] (-125.0 + 250.0·x)
 
     """
 
@@ -248,7 +248,7 @@ class Sensor:
             ...     coefficients=coefficients,
             ...     sensor_range=sensor_range,
             ... )
-            Temperature -40 °C – 125 °C (-300.33333333 + 1100.0·x)
+            Temperature [-40 °C, 125 °C] (-300.33333333 + 1100.0·x)
 
             Print representation of a ±100g acceleration sensor
 
@@ -271,7 +271,7 @@ class Sensor:
             ...     coefficients=coefficients,
             ...     sensor_range=sensor_range,
             ... )
-            Acceleration 100g -125 g_0 – 125 g_0 (-125.0 + 250.0·x)
+            Acceleration 100g [-125 g_0, 125 g_0] (-125.0 + 250.0·x)
 
         """
 
@@ -280,8 +280,8 @@ class Sensor:
         unit = self.range.unit
         name = self.identification.name
         representation = (
-            f"{name} {sensor_range.min} {unit:~P} – {sensor_range.max} "
-            f"{unit:~P} ({polynomial:unicode})"
+            f"{name} [{sensor_range.min} {unit:~P}, {sensor_range.max} "
+            f"{unit:~P}] ({polynomial:unicode})"
         )
 
         return representation
