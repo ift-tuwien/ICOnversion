@@ -24,7 +24,7 @@ def read_sensor_data():
 
         >>> sensors = read_sensor_data()
         >>> sensors["acc100g_01"]
-        Acceleration 100g -100.0 g – 100.0 g (-125.0 + 250.0·x)
+        Acceleration 100g -100 g – 100 g (-125.0 + 250.0·x)
 
     """
 
